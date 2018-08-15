@@ -5,24 +5,24 @@ import "./TermsContract.sol";
 import "./test/dummy_tokens/DummyToken.sol";
 
 // External dependencies
-import "zeppelin-solidity/contracts/token/ERC721/ERC721Holder.sol";
+import "zeppelin-solidity/contracts/token/ERC721/ERC721Receiver.sol";
 import "./TrancheToken.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 /**
  * The CDO contract does this and that...
  */
-contract CDO is ERC721Holder{
+contract CDO is ERC721Receiver{
     using SafeMath for *;
 
     address public creator;
     bool public finalized;
     uint public expectedRepayment;
 
-    //tranches
-    uint256[7] public seniors;
+    //3 tranches ->> 1 tranache tokenID = 5% of CDO value
+    uint256[5] public seniors;
     uint256[3] public mezzanines;
-    uint256[4] public juniors;
+    uint256[2] public juniors;
 
     uint256[] public underlyingDebtAssets;
     // mapping of tranche token ID to repayment entitlements
@@ -42,7 +42,6 @@ contract CDO is ERC721Holder{
     uint internal mezzanineWithdrawn=0;
     uint internal juniorWithdrawn=0;
 
-
     event CDOFinalized(uint _timestamp);
     
     function CDO(address _creator,
@@ -56,7 +55,10 @@ contract CDO is ERC721Holder{
         trancheToken = TrancheToken(_tranchToken);
         principalToken = DummyToken(_pricipalToken);
         squared = _squared;
+        finalized = false;
 
+        // the following sets `creator` as the owner
+        // of all CDO shares/NF Tranche tokens
         for(uint i=0; i<seniors.length; i++){
             seniors[i] = trancheToken.mintCDOTrancheToken(this, creator);
             tokenIDToTranch[seniors[i]] = 1;
@@ -78,16 +80,64 @@ contract CDO is ERC721Holder{
      */
     function () public payable {}
 
+    /**
+     * Receive `DebtToken`s, the underlying debts of this CDO.
+     */
+    function onERC721Received(
+        address _from,
+        uint256 _tokenId,
+        bytes
+    )
+        public
+        returns(bytes4)
+    {
+        require(!finalized);
+        require(_from == creator);
+        expectedRepayment = expectedRepayment.add(
+            termsContract.getExpectedRepaymentValue(
+                bytes32(_tokenId),
+                termsContract.getTermEndTimestamp(bytes32(_tokenId))
+            )
+        );
+
+        underlyingDebtAssets.push(_tokenId);
+
+        return ERC721Receiver.ERC721_RECEIVED;
+    }
+
+    /**
+     * Functions only to be called by the CDO creator
+     */
+
+    function finalize() public{
+        require (!finalized);
+        require(msg.sender == creator);
+        require(underlyingDebtAssets.length == 3);
+        finalized = true;
+        CDOFinalized(block.timestamp);
+    }
+
+    /**
+     * Public Functions
+     */
+
+     function getTotalUnderlyingDebtAssets() public view returns(uint)  {
+         return underlyingDebtAssets.length;
+     }
+     
+    // senior tranche consists of 50% of CDO
     function getTotalSeniorsPayout() public view returns(uint){
-        return (expectedRepayment.mul(4)).div(10);
+        return (expectedRepayment.mul(50)).div(100);
     }
 
+    // mezzanine tranche consists of 30% of CDO
     function getTotalMezzaninesPayout() public view returns(uint){
-        return (expectedRepayment.mul(35)).div(100);
+        return (expectedRepayment.mul(30)).div(100);
     }
 
+    // junior tranche consists of 20% of CDO
     function getTotalJuniorsPayout() public view returns(uint){
-        return (expectedRepayment).div(4);
+        return (expectedRepayment.mul(20)).div(100);
     }
 
     function seniorEntitlements()
@@ -148,7 +198,10 @@ contract CDO is ERC721Holder{
 
     // updates entitlement states for each tranche whenever called &
     // then transfers valid entitlement to "_to", if any
-    function withdrawn(uint256 _tokenId, address _to) public {
+    //TO-DO -> implement a mechanism where tranche tokens are minted on-demand
+    // when someone invests in the CDO 
+    // ERROR - This function reverts if too many tranche tokens need to be minted
+    function withdraw(uint256 _tokenId, address _to) public {
         require(trancheToken.ownerOf(_tokenId) == msg.sender);
         require(finalized);
 
@@ -188,7 +241,7 @@ contract CDO is ERC721Holder{
             }
         }
 
-        //entitlements updates
+        //entitlements updates done
 
         uint entitlement = entitlements[_tokenId];
         require (entitlement >0);
@@ -202,34 +255,5 @@ contract CDO is ERC721Holder{
         }
 
         principalToken.transfer(_to, entitlement);
-    }
-
-    /**
-     * Receive `DebtToken`s, the underlying debts of this CDO.
-     */
-    function onERC721Received(
-        address _from,
-        uint256 _tokenId,
-        bytes
-    )
-        public
-        returns(bytes4)
-    {
-        require(!finalized);
-        require(_from == creator);
-        expectedRepayment.add(
-            termsContract.getExpectedRepaymentValue(
-                bytes32(_tokenId),
-                termsContract.getTermEndTimestamp(bytes32(_tokenId))));
-
-        underlyingDebtAssets.push(_tokenId);
-
-        return ERC721_RECEIVED;
-    }
-
-    function finalize() public{
-        require(msg.sender == creator);
-        finalized = true;
-        CDOFinalized(block.timestamp);
     }
 }

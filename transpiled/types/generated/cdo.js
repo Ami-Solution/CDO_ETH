@@ -15,6 +15,32 @@ const base_contract_1 = require("../base_contract");
 class CDOContract extends base_contract_1.BaseContract {
     constructor(web3ContractInstance, defaults) {
         super(web3ContractInstance, defaults);
+        this.withdraw = {
+            sendTransactionAsync(_tokenId, _to, txData = {}) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const self = this;
+                    const txDataWithDefaults = yield self.applyDefaultsToTxDataAsync(txData, self.withdraw.estimateGasAsync.bind(self, _tokenId, _to));
+                    const txHash = yield utils_1.promisify(self.web3ContractInstance.withdraw, self.web3ContractInstance)(_tokenId, _to, txDataWithDefaults);
+                    return txHash;
+                });
+            },
+            estimateGasAsync(_tokenId, _to, txData = {}) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const self = this;
+                    const txDataWithDefaults = yield self.applyDefaultsToTxDataAsync(txData);
+                    const gas = yield utils_1.promisify(self.web3ContractInstance.withdraw.estimateGas, self.web3ContractInstance)(_tokenId, _to, txDataWithDefaults);
+                    return gas;
+                });
+            },
+            getABIEncodedTransactionData(_tokenId, _to, txData = {}) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const self = this;
+                    const txDataWithDefaults = yield self.applyDefaultsToTxDataAsync(txData);
+                    const abiEncodedTransactionData = yield utils_1.promisify(self.web3ContractInstance.withdraw.getData, self.web3ContractInstance)(_tokenId, _to, txDataWithDefaults);
+                    return abiEncodedTransactionData;
+                });
+            },
+        };
         this.creator = {
             callAsync(defaultBlock) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -209,32 +235,6 @@ class CDOContract extends base_contract_1.BaseContract {
                 });
             },
         };
-        this.withdrawn = {
-            sendTransactionAsync(_tokenId, _to, txData = {}) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const self = this;
-                    const txDataWithDefaults = yield self.applyDefaultsToTxDataAsync(txData, self.withdrawn.estimateGasAsync.bind(self, _tokenId, _to));
-                    const txHash = yield utils_1.promisify(self.web3ContractInstance.withdrawn, self.web3ContractInstance)(_tokenId, _to, txDataWithDefaults);
-                    return txHash;
-                });
-            },
-            estimateGasAsync(_tokenId, _to, txData = {}) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const self = this;
-                    const txDataWithDefaults = yield self.applyDefaultsToTxDataAsync(txData);
-                    const gas = yield utils_1.promisify(self.web3ContractInstance.withdrawn.estimateGas, self.web3ContractInstance)(_tokenId, _to, txDataWithDefaults);
-                    return gas;
-                });
-            },
-            getABIEncodedTransactionData(_tokenId, _to, txData = {}) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const self = this;
-                    const txDataWithDefaults = yield self.applyDefaultsToTxDataAsync(txData);
-                    const abiEncodedTransactionData = yield utils_1.promisify(self.web3ContractInstance.withdrawn.getData, self.web3ContractInstance)(_tokenId, _to, txDataWithDefaults);
-                    return abiEncodedTransactionData;
-                });
-            },
-        };
         this.getTotalSeniorsPayout = {
             callAsync(defaultBlock) {
                 return __awaiter(this, void 0, void 0, function* () {
@@ -258,6 +258,15 @@ class CDOContract extends base_contract_1.BaseContract {
                 return __awaiter(this, void 0, void 0, function* () {
                     const self = this;
                     const result = yield utils_1.promisify(self.web3ContractInstance.finalized.call, self.web3ContractInstance)();
+                    return result;
+                });
+            },
+        };
+        this.getTotalUnderlyingDebtAssets = {
+            callAsync(defaultBlock) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const self = this;
+                    const result = yield utils_1.promisify(self.web3ContractInstance.getTotalUnderlyingDebtAssets.call, self.web3ContractInstance)();
                     return result;
                 });
             },

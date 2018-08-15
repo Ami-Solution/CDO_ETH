@@ -13,6 +13,67 @@ import * as Web3 from 'web3';
 import {BaseContract} from '../base_contract';
 
 export class CDOContract extends BaseContract {
+    public withdraw = {
+        async sendTransactionAsync(
+            _tokenId: BigNumber,
+            _to: string,
+            txData: TxData = {},
+        ): Promise<string> {
+            const self = this as CDOContract;
+            const txDataWithDefaults = await self.applyDefaultsToTxDataAsync(
+                txData,
+                self.withdraw.estimateGasAsync.bind(
+                    self,
+                    _tokenId,
+                    _to,
+                ),
+            );
+            const txHash = await promisify<string>(
+                self.web3ContractInstance.withdraw, self.web3ContractInstance,
+            )(
+                _tokenId,
+                _to,
+                txDataWithDefaults,
+            );
+            return txHash;
+        },
+        async estimateGasAsync(
+            _tokenId: BigNumber,
+            _to: string,
+            txData: TxData = {},
+        ): Promise<number> {
+            const self = this as CDOContract;
+            const txDataWithDefaults = await self.applyDefaultsToTxDataAsync(
+                txData,
+            );
+            const gas = await promisify<number>(
+                self.web3ContractInstance.withdraw.estimateGas, self.web3ContractInstance,
+            )(
+                _tokenId,
+                _to,
+                txDataWithDefaults,
+            );
+            return gas;
+        },
+        async getABIEncodedTransactionData(
+            _tokenId: BigNumber,
+            _to: string,
+            txData: TxData = {},
+        ): Promise<string> {
+            const self = this as CDOContract;
+            const txDataWithDefaults = await self.applyDefaultsToTxDataAsync(
+                txData,
+            );
+            const abiEncodedTransactionData = await promisify<string>(
+                self.web3ContractInstance.withdraw.getData, self.web3ContractInstance,
+            )(
+                _tokenId,
+                _to,
+                txDataWithDefaults,
+            );
+            return abiEncodedTransactionData;
+        },
+    };
     public creator = {
         async callAsync(
             defaultBlock?: Web3.BlockParam,
@@ -357,67 +418,6 @@ export class CDOContract extends BaseContract {
             return abiEncodedTransactionData;
         },
     };
-    public withdrawn = {
-        async sendTransactionAsync(
-            _tokenId: BigNumber,
-            _to: string,
-            txData: TxData = {},
-        ): Promise<string> {
-            const self = this as CDOContract;
-            const txDataWithDefaults = await self.applyDefaultsToTxDataAsync(
-                txData,
-                self.withdrawn.estimateGasAsync.bind(
-                    self,
-                    _tokenId,
-                    _to,
-                ),
-            );
-            const txHash = await promisify<string>(
-                self.web3ContractInstance.withdrawn, self.web3ContractInstance,
-            )(
-                _tokenId,
-                _to,
-                txDataWithDefaults,
-            );
-            return txHash;
-        },
-        async estimateGasAsync(
-            _tokenId: BigNumber,
-            _to: string,
-            txData: TxData = {},
-        ): Promise<number> {
-            const self = this as CDOContract;
-            const txDataWithDefaults = await self.applyDefaultsToTxDataAsync(
-                txData,
-            );
-            const gas = await promisify<number>(
-                self.web3ContractInstance.withdrawn.estimateGas, self.web3ContractInstance,
-            )(
-                _tokenId,
-                _to,
-                txDataWithDefaults,
-            );
-            return gas;
-        },
-        async getABIEncodedTransactionData(
-            _tokenId: BigNumber,
-            _to: string,
-            txData: TxData = {},
-        ): Promise<string> {
-            const self = this as CDOContract;
-            const txDataWithDefaults = await self.applyDefaultsToTxDataAsync(
-                txData,
-            );
-            const abiEncodedTransactionData = await promisify<string>(
-                self.web3ContractInstance.withdrawn.getData, self.web3ContractInstance,
-            )(
-                _tokenId,
-                _to,
-                txDataWithDefaults,
-            );
-            return abiEncodedTransactionData;
-        },
-    };
     public getTotalSeniorsPayout = {
         async callAsync(
             defaultBlock?: Web3.BlockParam,
@@ -457,6 +457,21 @@ export class CDOContract extends BaseContract {
             const result = await promisify<boolean
     >(
                 self.web3ContractInstance.finalized.call,
+                self.web3ContractInstance,
+            )(
+            );
+            return result;
+        },
+    };
+    public getTotalUnderlyingDebtAssets = {
+        async callAsync(
+            defaultBlock?: Web3.BlockParam,
+        ): Promise<BigNumber
+    > {
+            const self = this as CDOContract;
+            const result = await promisify<BigNumber
+    >(
+                self.web3ContractInstance.getTotalUnderlyingDebtAssets.call,
                 self.web3ContractInstance,
             )(
             );

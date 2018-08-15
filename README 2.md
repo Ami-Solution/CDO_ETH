@@ -1,4 +1,4 @@
-<img src="https://s3-us-west-2.amazonaws.com/dharma-assets/logo+orange.png"  width=300/>
+<!-- <img src="https://s3-us-west-2.amazonaws.com/dharma-assets/logo+orange.png"  width=300/>
 
 ------------
 
@@ -61,3 +61,4 @@ Run `truffle` tests:
 ```
 yarn test
 ```
+ -->

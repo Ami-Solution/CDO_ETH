@@ -81,6 +81,8 @@ contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
 
     const TX_DEFAULTS = { from: CONTRACT_OWNER, gas: 4000000 };
 
+    let tokenIds : BigNumber[] = new Array();
+
     before(async () => {
         const dummyTokenRegistryContract = await TokenRegistryContract.deployed(web3, TX_DEFAULTS);
         const dummyREPTokenAddress = await dummyTokenRegistryContract.getTokenAddressBySymbol.callAsync(
@@ -213,6 +215,17 @@ contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
             await expect(
                 debtToken.ownerOf.callAsync(new BigNumber(agreementId)),
             ).to.eventually.equal(CREDITOR_2);
+ 
+            const expectedTermEnd:BigNumber = await termsContract.getTermEndTimestamp.callAsync(
+                agreementId
+            );
+
+            const expectedRepayment:BigNumber = await termsContract.getExpectedRepaymentValue.callAsync(
+                agreementId,
+                expectedTermEnd
+            );
+
+            console.log("expected value :", web3.fromWei(expectedRepayment.toNumber(), "ether"));
         });
 
         it("should allow debtor to make repayment", async () => {
@@ -244,7 +257,6 @@ contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
 
         it("should allow creation of multiple debt agreements", async() => {
             let i: number;
-            let agreementsIds: string[];
             for(i=0; i<DEBTORS.length; i++){
                 signedDebtOrder = await orderFactory.generateDebtOrder({
                     creditor: CREDITORS[i],
@@ -254,6 +266,7 @@ contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
 
                 // The unique id we use to refer to the debt agreement is the hash of its associated issuance commitment.
                 agreementId = signedDebtOrder.getIssuanceCommitment().getHash();
+                tokenIds.push(new BigNumber(agreementId));
 
                 // Creditor fills the signed debt order, creating a debt agreement with a unique associated debt token
                 const txHash = await kernel.fillDebtOrder.sendTransactionAsync(
@@ -269,16 +282,23 @@ contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
                 receipt = await web3.eth.getTransactionReceipt(txHash);
 
                 await expect(
-                    debtToken.ownerOf.callAsync(new BigNumber(agreementId)),
+                    debtToken.ownerOf.callAsync(tokenIds[i]),
                 ).to.eventually.equal(CREDITORS[i]);
 
                 //transfer debt tokens to a loan agreegator
                 await debtToken.transfer.sendTransactionAsync(
                     LOAN_AGGREGATOR, // to
-                    new BigNumber(agreementId), // tokenId
+                    tokenIds[i], // tokenId
                     { from: CREDITORS[i] },
                 );
+
+                //check new owner is Loan aggregator
+                await expect(
+                    debtToken.ownerOf.callAsync(tokenIds[i]),
+                ).to.eventually.equal(LOAN_AGGREGATOR);
             }
+
+            expect(tokenIds.length).to.equal(DEBTORS.length);
         });
 
         // before(async () => {
@@ -299,13 +319,78 @@ contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
             // console.log("receipt :", receipt);
 
             const _cdoAddress = await cdoFactory.deployedCDOs.callAsync(new BigNumber(0));
-
-            console.log( "cdo address: ", _cdoAddress);
-
             cdo = await CDOContract.at(_cdoAddress, web3, TX_DEFAULTS);
+            
             await expect(
                 cdo.creator.callAsync()
             ).to.eventually.equal(LOAN_AGGREGATOR);
+
+            await expect(
+                cdo.squared.callAsync()
+            ).to.eventually.equal(false);
+
+            await expect(
+                cdo.finalized.callAsync()
+            ).to.eventually.equal(false);
+
+            await expect(
+                cdo.expectedRepayment.callAsync()
+            ).to.eventually.bignumber.equal(0);
+
+            await expect(
+                cdo.expectedRepayment.callAsync()
+            ).to.eventually.bignumber.equal(0);
+        });
+
+        it("should fail if CDO creator to finalize the CDO before adding debt assets", async()=>{
+            await expect(
+                cdo.finalize.sendTransactionAsync({ from: LOAN_AGGREGATOR })
+            ).to.eventually.be.rejectedWith(REVERT_ERROR);
+        });
+
+        it("should update underlyingDebtAssets with 3 DebtTokens", async()=>{
+            let i: number;
+            for(i=0; i<tokenIds.length; i++){
+                //transfer debt tokens to CDO
+                await debtToken.transfer.sendTransactionAsync(
+                    cdo.address, // to
+                    tokenIds[i], // tokenId
+                    { from: LOAN_AGGREGATOR }
+                );
+                await expect(
+                    debtToken.ownerOf.callAsync(tokenIds[i]),
+                ).to.eventually.equal(cdo.address);
+
+                const collateralTokenId : BigNumber = await cdo.underlyingDebtAssets.callAsync(
+                    new BigNumber(i)
+                );
+                expect(collateralTokenId).to.bignumber.equal(tokenIds[i]);
+            }
+
+            console.log("total expected repayment = ", web3.fromWei(
+                (await cdo.expectedRepayment.callAsync()).toNumber(),
+                "ether"
+                )
+            );
+        });
+
+        it("should allow CDO creator to finalize the CDO after all debt tokens have been added", async()=>{
+            await cdo.finalize.sendTransactionAsync({ from: LOAN_AGGREGATOR });
+
+            await expect(
+                cdo.finalized.callAsync()
+            ).to.eventually.equal(true);
+        });
+
+        it("creator must be the owner of all tranche tokens", async()=>{
+
+            const nftSenior = await cdo.seniors.callAsync(new BigNumber(0));
+            await expect(
+                trancheToken.ownerOf.callAsync(nftSenior)
+            ).to.eventually.equal(LOAN_AGGREGATOR);
+            // console.log(nftSenior);
+            // console.log(await trancheToken.ownerOf.callAsync(nftSenior));
+            // console.log(LOAN_AGGREGATOR);
         });
     });
 });

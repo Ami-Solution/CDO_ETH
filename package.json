@@ -30,7 +30,8 @@
     "prepublishOnly": "npm run dist",
     "test": "npm run compile; npm run generate-typings; npm run transpile; npm run migrate; truffle test transpiled/test/ts/cdo.js",
     "chain": "ganache-cli --networkId 70 --accounts 20",
-    "validate": "npm ls"
+    "validate": "npm ls",
+    "testcdo": "truffle test transpiled/test/ts/cdo.js"
   },
   "repository": "git@github.com:dharmaprotocol/charta.git",
   "author": "Nadav Hollander <nadav@dharma.io>",
