@@ -24,12 +24,18 @@ const bignumber_setup_1 = require("./test_utils/bignumber_setup");
 const chai_setup_1 = require("./test_utils/chai_setup");
 const terms_contract_parameters_1 = require("./factories/terms_contract_parameters");
 const debt_order_factory_1 = require("./factories/debt_order_factory");
+const c_d_o_factory_1 = require("../../types/generated/c_d_o_factory");
+const cdo_1 = require("../../types/generated/cdo");
+const tranche_token_1 = require("../../types/generated/tranche_token");
 // Configure BigNumber exponentiation
 bignumber_setup_1.BigNumberSetup.configure();
 // Set up Chai
 chai_setup_1.default.configure();
 const expect = chai.expect;
-const simpleInterestTermsContract = artifacts.require("SimpleInterestTermsContract");
+// const simpleInterestTermsContract = artifacts.require("SimpleInterestTermsContract");
+// const CDOFactory = artifacts.require("CDOFactory");
+// const CDO = artifacts.require("CDO");
+// const TrancheToken = artifacts.require("TrancheToken");
 contract("Collateralized Debt Obligation", (ACCOUNTS) => __awaiter(this, void 0, void 0, function* () {
     let repaymentRouter;
     let kernel;
@@ -37,6 +43,9 @@ contract("Collateralized Debt Obligation", (ACCOUNTS) => __awaiter(this, void 0,
     let principalToken;
     let termsContract;
     let tokenTransferProxy;
+    let cdoFactory;
+    let cdo;
+    let trancheToken;
     let orderFactory;
     const CONTRACT_OWNER = ACCOUNTS[0];
     const DEBTOR_1 = ACCOUNTS[1];
@@ -61,6 +70,8 @@ contract("Collateralized Debt Obligation", (ACCOUNTS) => __awaiter(this, void 0,
         tokenTransferProxy = yield token_transfer_proxy_1.TokenTransferProxyContract.deployed(web3, TX_DEFAULTS);
         termsContract = yield simple_interest_terms_contract_1.SimpleInterestTermsContractContract.deployed(web3, TX_DEFAULTS);
         repaymentRouter = yield repayment_router_1.RepaymentRouterContract.deployed(web3, TX_DEFAULTS);
+        cdoFactory = yield c_d_o_factory_1.CDOFactoryContract.deployed(web3, TX_DEFAULTS);
+        trancheToken = yield tranche_token_1.TrancheTokenContract.deployed(web3, TX_DEFAULTS);
         yield principalToken.setBalance.sendTransactionAsync(CREDITOR_1, Units.ether(100));
         yield principalToken.setBalance.sendTransactionAsync(CREDITOR_2, Units.ether(100));
         yield principalToken.setBalance.sendTransactionAsync(CREDITOR_3, Units.ether(100));
@@ -160,7 +171,18 @@ contract("Collateralized Debt Obligation", (ACCOUNTS) => __awaiter(this, void 0,
                 { from: CREDITORS[i] });
             }
         }));
+        // before(async () => {
+        //     await 
+        // });
         it("should allow a LOAN_AGGREGATOR to create a CDO via CDOFactory", () => __awaiter(this, void 0, void 0, function* () {
+            const txHash = yield cdoFactory.createCDO.sendTransactionAsync(termsContract.address, trancheToken.address, principalToken.address, { from: LOAN_AGGREGATOR });
+            // console.log("txHash: ", txHash);
+            receipt = yield web3.eth.getTransactionReceipt(txHash);
+            // console.log("receipt :", receipt);
+            const _cdoAddress = yield cdoFactory.deployedCDOs.callAsync(new bignumber_js_1.BigNumber(0));
+            console.log("cdo address: ", _cdoAddress);
+            cdo = yield cdo_1.CDOContract.at(_cdoAddress, web3, TX_DEFAULTS);
+            yield expect(cdo.creator.callAsync()).to.eventually.equal(LOAN_AGGREGATOR);
         }));
     });
 }));

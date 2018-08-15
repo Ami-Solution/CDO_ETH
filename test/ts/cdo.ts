@@ -42,10 +42,10 @@ BigNumberSetup.configure();
 ChaiSetup.configure();
 const expect = chai.expect;
 
-const simpleInterestTermsContract = artifacts.require("SimpleInterestTermsContract");
-const CDOFactory = artifacts.require("CDOFactory");
-const CDO = artifacts.require("CDO");
-const TrancheToken = artifacts.require("TrancheToken");
+// const simpleInterestTermsContract = artifacts.require("SimpleInterestTermsContract");
+// const CDOFactory = artifacts.require("CDOFactory");
+// const CDO = artifacts.require("CDO");
+// const TrancheToken = artifacts.require("TrancheToken");
 
 contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
     let repaymentRouter: RepaymentRouterContract;
@@ -97,8 +97,8 @@ contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
         tokenTransferProxy = await TokenTransferProxyContract.deployed(web3, TX_DEFAULTS);
         termsContract = await SimpleInterestTermsContract.deployed(web3, TX_DEFAULTS);
         repaymentRouter = await RepaymentRouterContract.deployed(web3, TX_DEFAULTS);
-        cdoFactory = await CDOFactory.deployed(web3, TX_DEFAULTS);
-        trancheToken = await TrancheToken.deployed(web3, TX_DEFAULTS);
+        cdoFactory = await CDOFactoryContract.deployed(web3, TX_DEFAULTS);
+        trancheToken = await TrancheTokenContract.deployed(web3, TX_DEFAULTS);
 
         await principalToken.setBalance.sendTransactionAsync(CREDITOR_1, Units.ether(100));
         await principalToken.setBalance.sendTransactionAsync(CREDITOR_2, Units.ether(100));
@@ -286,7 +286,26 @@ contract("Collateralized Debt Obligation", async (ACCOUNTS) => {
         // });
 
         it("should allow a LOAN_AGGREGATOR to create a CDO via CDOFactory", async()=>{
-            //TO-DO
+
+            const txHash = await cdoFactory.createCDO.sendTransactionAsync(
+                termsContract.address,
+                trancheToken.address,
+                principalToken.address,
+                { from: LOAN_AGGREGATOR }
+            );
+
+            // console.log("txHash: ", txHash);
+            receipt = await web3.eth.getTransactionReceipt(txHash);
+            // console.log("receipt :", receipt);
+
+            const _cdoAddress = await cdoFactory.deployedCDOs.callAsync(new BigNumber(0));
+
+            console.log( "cdo address: ", _cdoAddress);
+
+            cdo = await CDOContract.at(_cdoAddress, web3, TX_DEFAULTS);
+            await expect(
+                cdo.creator.callAsync()
+            ).to.eventually.equal(LOAN_AGGREGATOR);
         });
     });
 });
