@@ -1,0 +1,19 @@
+@startuml
+actor Lenders
+Lenders -> DharmaProtocol : fill DebtOrders
+actor LoanAggregator
+DharmaProtocol -> Lenders : receive DebtTokens(ERC721)
+Lenders -> LoanAggregator : sell DebtTokens
+LoanAggregator -> CDOFactory : initializes a CDO contract
+CDOFactory -> CDO : CDO initialized
+LoanAggregator -> CDO : collateralizes the CDO - sending CDO DebtTokens
+LoanAggregator -> CDO : finalizes the CDO when all DebtTokens have been sent
+actor Investors
+Investors -> CDO : Buy shares of CDO tranches(ETH/ERC20)
+CDO -> Investors : receive TrancheTokens(ERC721)
+actor Debtors
+Debtors -> CDO : make repayment of loans(principle+interest)
+CDO -> Investors : pay seniors first
+CDO -> Investors : pay mezzanines second
+CDO -> Investors : pay juniors last
+@enduml

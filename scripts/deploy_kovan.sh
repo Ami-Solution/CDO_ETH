@@ -16,7 +16,7 @@ cp artifacts/json/* build/contracts/
 
 # Setup SSH tunnneling with port forwarding into hosted Kovan node
 ssh -f -o 'ServerAliveInterval 10' -o 'ServerAliveCountMax 3' \
-    -N -L 8546:localhost:8545 ubuntu@kovan.dharma.io
+    -N -L 8546:localhost:8545 ubuntu@kovan.infura.io
 
 # Grab PID of ssh connection process
 SSH_PID=$(ps aux | grep "ssh" | grep -v 'grep' | awk '{print $2}')

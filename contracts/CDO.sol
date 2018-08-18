@@ -215,8 +215,9 @@ contract CDO is ERC721Receiver{
 
             for(uint i=0; i<seniors.length; i++){
                 entitlements[seniors[i]] += unallocatedSeniorEntitlements/seniors.length;
-                unallocatedEntitlements.sub(unallocatedSeniorEntitlements);
             }
+
+            unallocatedEntitlements.sub(unallocatedSeniorEntitlements);
 
             if(unallocatedEntitlements > 0){
                 uint256 unallocatedMezzanineEntitlements = 
@@ -225,23 +226,21 @@ contract CDO is ERC721Receiver{
 
                 for(i=0; i<mezzanines.length; i++){
                     entitlements[mezzanines[i]]+= unallocatedMezzanineEntitlements/mezzanines.length;
-                    unallocatedEntitlements.sub(unallocatedMezzanineEntitlements);
                 }
 
+                unallocatedEntitlements.sub(unallocatedMezzanineEntitlements);
+
                 if(unallocatedEntitlements > 0){
-                    uint256 unallocatedJuniorEntitlements = 
-                    (unallocatedEntitlements < remainingJuniorEntitlement())
-                    ?unallocatedEntitlements: remainingJuniorEntitlement();
+                    uint256 unallocatedJuniorEntitlements = unallocatedEntitlements;
                 }
 
                 for(i=0; i<juniors.length; i++){
                     entitlements[juniors[i]]+= unallocatedJuniorEntitlements/juniors.length;
-                    unallocatedEntitlements.sub(unallocatedJuniorEntitlements);
                 }
             }
         }
 
-        //entitlements updates done
+        //entitlements updates completed
 
         uint entitlement = entitlements[_tokenId];
         require (entitlement >0);
